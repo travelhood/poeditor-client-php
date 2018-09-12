@@ -1,0 +1,21 @@
+{
+  "name": "travelhood/poeditor-client",
+  "description": "PHP client for poeditor.com API",
+  "minimum-stability": "dev",
+  "license": "GPLv3",
+  "authors": [
+    {
+      "name": "Lajos Bencz",
+      "email": "lajos.bencz@travelhood.com"
+    }
+  ],
+  "require": {
+    "ext-curl": "*",
+    "ext-json": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "Travelhood\\PoEditor\\": "src/Travelhood/PoEditor"
+    }
+  }
+}
