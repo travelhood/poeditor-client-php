@@ -2,6 +2,8 @@
 
 namespace Travelhood\PoEditor;
 
+use InvalidArgumentException;
+
 class Client
 {
     const URL_SERVICE = 'https://api.poeditor.com/v2';
@@ -58,6 +60,7 @@ class Client
     }
 
     /**
+     * Returns the list of projects owned by user.
      * @return Project[]
      * @throws Exception
      */
@@ -71,6 +74,7 @@ class Client
     }
 
     /**
+     * Returns project's details.
      * @param int $projectId
      * @return Project
      * @throws Exception
@@ -81,6 +85,8 @@ class Client
     }
 
     /**
+     * Creates a new project.
+     * Returns project details (if successful).
      * @param string $name
      * @param string $description (optional)
      * @return Project
@@ -95,6 +101,8 @@ class Client
     }
 
     /**
+     * Updates project settings (name, description, reference language)
+     * If optional parameters are not sent, their respective fields are not updated.
      * @param int $projectId
      * @param array $data
      * @return Project
@@ -107,6 +115,8 @@ class Client
     }
 
     /**
+     * Deletes the project from the account.
+     * You must be the owner of the project.
      * @param int $projectId
      * @return bool
      * @throws Exception
@@ -118,6 +128,7 @@ class Client
     }
 
     /**
+     * Updates terms / translations - No more than one request every 30 seconds.
      * @param int $projectId
      * @param string $updating
      * @param string $file
@@ -171,6 +182,8 @@ class Client
     }
 
     /**
+     * Syncs your project with the array you send (terms that are not found in the JSON object will be deleted from project and the new ones added).
+     * Please use with caution. If wrong data is sent, existing terms and their translations might be irreversibly lost.
      * @param int $projectId
      * @param array $terms
      * @return array
@@ -185,6 +198,7 @@ class Client
     }
 
     /**
+     * Returns the link of the file (expires after 10 minutes).
      * @param int $projectId
      * @param string $language
      * @param string $type
@@ -210,33 +224,31 @@ class Client
     }
 
     /**
+     * Returns a comprehensive list of all languages supported by POEditor.
+     * @see https://poeditor.com/docs/languages
      * @return Language[]
      * @throws Exception
      */
     public function availableLanguages()
     {
-        $return = [];
-        foreach($this->_call('languages/available')['languages'] as $languageArray) {
-            $return[] = new Language($languageArray);
-        }
-        return $return;
+        return $this->_call('languages/available')['languages'];
     }
 
     /**
+     * Returns project languages, percentage of translation done for each and the datetime (UTC - ISO 8601) when the last change was made.
      * @param int $projectId
      * @return Language[]
      * @throws Exception
      */
     public function listLanguages($projectId)
     {
-        $return = [];
-        foreach($this->_call('languages/list', ['id'=>$projectId])['languages'] as $languageArray) {
-            $return[] = new Language($languageArray);
-        }
-        return $return;
+        return $this->_call('languages/list', [
+            'id'=>$projectId,
+        ])['languages'];
     }
 
     /**
+     * Adds a new language to project.
      * @param int $projectId
      * @param string $languageCode
      * @return bool
@@ -252,6 +264,7 @@ class Client
     }
 
     /**
+     * Inserts / overwrites translations.
      * @param int $projectId
      * @param string $languageCode
      * @param array $data
@@ -273,6 +286,7 @@ class Client
     }
 
     /**
+     * Deletes existing language from project.
      * @param $projectId
      * @param $languageCode
      * @return bool
@@ -288,6 +302,7 @@ class Client
     }
 
     /**
+     * Returns project's terms and translations if the argument language is provided.
      * @param int $projectId
      * @param string $languageCode (optional)
      * @return Term[]
@@ -309,6 +324,7 @@ class Client
     }
 
     /**
+     * Adds terms to project.
      * @param int $projectId
      * @param array $data
      * @return array
@@ -320,6 +336,121 @@ class Client
             'id' => $projectId,
             'data' => json_encode($data),
         ])['terms'];
+    }
+
+    /**
+     * Updates project terms. Lets you change the text, context, reference, plural and tags.
+     * @param int $projectId
+     * @param array $data
+     * @return array
+     * @throws Exception
+     */
+    public function updateTerms($projectId, array $data)
+    {
+        return $this->_call('terms/update', [
+            'id' => $projectId,
+            'data' => json_encode($data),
+        ])['terms'];
+    }
+
+    /**
+     * Deletes terms from project.
+     * @param int $projectId
+     * @param array $data
+     * @return array
+     * @throws Exception
+     */
+    public function deleteTerms($projectId, array $data)
+    {
+        return $this->_call('terms/delete', [
+            'id' => $projectId,
+            'data' => json_encode($data),
+        ])['terms'];
+    }
+
+    /**
+     * Adds comments to existing terms.
+     * @param int $projectId
+     * @param array $data
+     * @return array
+     * @throws Exception
+     */
+    public function addComment($projectId, array $data)
+    {
+        return $this->_call('terms/add_comment', [
+            'id' => $projectId,
+            'data' => json_encode($data),
+        ])['terms'];
+    }
+
+    /**
+     * Returns the list of contributors.
+     * @param int $projectId (optional)
+     * @param string $languageCode (optional)
+     * @return array
+     * @throws Exception
+     */
+    public function listContributors($projectId=null, $languageCode=null)
+    {
+        if($languageCode && !$projectId) {
+            throw new InvalidArgumentException('$projectId is required');
+        }
+        $data = [];
+        if($projectId) {
+            $data['id'] = $projectId;
+        }
+        if($languageCode) {
+            $data['language'] = $languageCode;
+        }
+        return $this->_call('contributors/list', $data)['contributors'];
+    }
+
+    /**
+     * Adds a contributor to a project language or an administrator to a project.
+     * @param int $projectId
+     * @param string $name
+     * @param string $email
+     * @param string $languageCode
+     * @param bool $isAdmin
+     * @return bool
+     * @throws Exception
+     */
+    public function addContributor($projectId, $name, $email, $languageCode, $isAdmin=false)
+    {
+        $data = [
+            'id' => $projectId,
+            'name' => $name,
+            'email' => $email,
+        ];
+        if($isAdmin) {
+            $data['admin'] = 1;
+        }
+        else {
+            $data['language'] = $languageCode;
+        }
+        $this->_call('contributors/add');
+        return true;
+    }
+
+    /**
+     * Removes a contributor from a project language or an admin from a project, if the language is not specified.
+     * @param int $projectId
+     * @param string $email
+     * @param string $languageCode
+     * @return bool
+     * @throws Exception
+     */
+    public function removeContributor($projectId, $email, $languageCode=null)
+    {
+        $data = [
+            'id' => $projectId,
+            'email' => $email,
+        ];
+        if($languageCode) {
+            $data['language'] = $languageCode;
+        }
+        $this->_call('contributors/remove', $data);
+        return true;
     }
 
 }

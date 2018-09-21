@@ -30,6 +30,7 @@ class ClientTest extends PoEditorTestCase
     /**
      * @dataProvider provideProjectIds
      * @param $projectId
+     * @throws \Travelhood\PoEditor\Exception
      */
     public function testViewProject($projectId)
     {
