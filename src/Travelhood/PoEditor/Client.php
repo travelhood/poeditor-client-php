@@ -8,13 +8,33 @@ class Client
 {
     const URL_SERVICE = 'https://api.poeditor.com/v2';
 
+    const UPDATE_TERMS = 'terms';
+    const UPDATE_TRANSLATIONS = 'translations';
+    const UPDATE_TERMS_AND_TRANSLATIONS = 'terms_translations';
+
+    const TYPE_POT = 'pot';
+    const TYPE_PO = 'po';
+    const TYPE_MO = 'mo';
+    const TYPE_XLS = 'xls';
+    const TYPE_CSV = 'csv';
+    const TYPE_RESW = 'resw';
+    const TYPE_RESX = 'resx';
+    const TYPE_ANDROID_STRINGS = 'android_strings';
+    const TYPE_APPLE_STRINGS = 'apple_strings';
+    const TYPE_XLIFF = 'xliff';
+    const TYPE_PROPERTIES = 'properties';
+    const TYPE_KEY_VALUE_JSON = 'key_value_json';
+    const TYPE_JSON = 'json';
+    const TYPE_XMB = 'xmb';
+    const TYPE_XTB = 'xtb';
+
     protected $_apiToken;
     protected $_curl;
 
     /**
      * @param string $endpoint
      * @param array $data (optional)
-     * @return array
+     * @return array|true
      * @throws Exception
      */
     protected function _call($endpoint, $data=null)
@@ -26,13 +46,16 @@ class Client
         $url = self::URL_SERVICE.$endpoint;
         $data['api_token'] = $this->_apiToken;
         curl_setopt($this->_curl, CURLOPT_URL, $url);
-        curl_setopt($this->_curl, CURLOPT_POSTFIELDS, http_build_query($data));
+        curl_setopt($this->_curl, CURLOPT_POSTFIELDS, $data);
         $return = curl_exec($this->_curl);
         $response = json_decode($return, true);
         if($response['response']['status'] != 'success') {
             throw new Exception($response['response']['message'], $response['response']['code']);
         }
-        return $response['result'];
+        if(array_key_exists('result', $response)) {
+            return $response['result'];
+        }
+        return true;
     }
 
     /**
@@ -46,10 +69,11 @@ class Client
         }
         $this->_apiToken = $apiToken;
         $this->_curl = curl_init();
-        curl_setopt($this->_curl, CURLOPT_HEADER, false);
-        curl_setopt($this->_curl, CURLOPT_TIMEOUT, 30);
+        //curl_setopt($this->_curl, CURLOPT_HEADER, false);
+        //curl_setopt($this->_curl, CURLOPT_TIMEOUT, 30);
         curl_setopt($this->_curl, CURLOPT_POST, 1);
         curl_setopt($this->_curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($this->_curl, CURLOPT_FOLLOWLOCATION, true);
     }
 
     public function __destruct()
@@ -141,7 +165,7 @@ class Client
      * @return array
      * @throws Exception
      */
-    protected function uploadProject($projectId, $updating, $file, $language, $overwrite, $sync_terms, array $tags, $read_from_source, $fuzzy_trigger)
+    public function uploadProject($projectId, $updating, $file, $language=null, $overwrite=false, $sync_terms=false, array $tags=[], $read_from_source=false, $fuzzy_trigger=false)
     {
         switch($updating) {
             case 'terms':
@@ -155,10 +179,15 @@ class Client
             default:
                 throw new Exception('Invalid value for parameter: updating');
         }
+        if(!file_exists($file)) {
+            throw new InvalidArgumentException('Invalid file: '.$file);
+        }
+        $file = realpath($file);
+        $fileInfo = pathinfo($file);
         $data = [
             'id' => $projectId,
             'updating' => $updating,
-            'file' => curl_file_create($file),
+            'file' => curl_file_create($file, '', $fileInfo['basename']),
         ];
         if($language) {
             $data['language'] = $language;
@@ -231,7 +260,11 @@ class Client
      */
     public function availableLanguages()
     {
-        return $this->_call('languages/available')['languages'];
+        $languages = [];
+        foreach($this->_call('languages/available')['languages'] as $language) {
+            $languages[] = new Language($language);
+        }
+        return $languages;
     }
 
     /**
@@ -242,9 +275,13 @@ class Client
      */
     public function listLanguages($projectId)
     {
-        return $this->_call('languages/list', [
+        $languages = [];
+        foreach($this->_call('languages/list', [
             'id'=>$projectId,
-        ])['languages'];
+        ])['languages'] as $language) {
+            $languages[] = new Language($language);
+        }
+        return $languages;
     }
 
     /**
