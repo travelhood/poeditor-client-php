@@ -7,6 +7,20 @@ class PoEditorTestCase extends \PHPUnit\Framework\TestCase
 
     static function setUpBeforeClass()
     {
-        self::$client = new \Travelhood\PoEditor\Client(getenv('POEDITOR_TOKEN'));
+        self::$client = new \Travelhood\PoEditor\Client(getenv('POEDITOR_TOKEN'));;
+    }
+
+    /**
+     * @return array
+     * @throws \Travelhood\PoEditor\Exception
+     */
+    public function provideProjectIds()
+    {
+        $client = new \Travelhood\PoEditor\Client(getenv('POEDITOR_TOKEN'));
+        $list = [];
+        foreach($client->listProjects() as $project) {
+            $list[] = [$project->id];
+        }
+        return $list;
     }
 }
