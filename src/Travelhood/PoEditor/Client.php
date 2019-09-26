@@ -48,6 +48,9 @@ class Client
         curl_setopt($this->_curl, CURLOPT_URL, $url);
         curl_setopt($this->_curl, CURLOPT_POSTFIELDS, $data);
         $return = curl_exec($this->_curl);
+        if(!$return) {
+            throw new Exception(curl_error($this->_curl), curl_errno($this->_curl));
+        }
         $response = json_decode($return, true);
         if($response['response']['status'] != 'success') {
             throw new Exception($response['response']['message'], $response['response']['code']);
