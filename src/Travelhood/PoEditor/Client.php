@@ -29,6 +29,7 @@ class Client
     const TYPE_XTB = 'xtb';
 
     protected $_apiToken;
+    protected $_verifySSL;
     protected $_curl;
 
     /**
@@ -47,6 +48,8 @@ class Client
         $data['api_token'] = $this->_apiToken;
         curl_setopt($this->_curl, CURLOPT_URL, $url);
         curl_setopt($this->_curl, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($this->_curl, CURLOPT_SSL_VERIFYHOST, $this->_verifySSL);
+        curl_setopt($this->_curl, CURLOPT_SSL_VERIFYPEER, $this->_verifySSL);
         $return = curl_exec($this->_curl);
         if(!$return) {
             throw new Exception(curl_error($this->_curl), curl_errno($this->_curl));
@@ -63,14 +66,16 @@ class Client
 
     /**
      * @param string $apiToken
+     * @param bool $verifySSL (optional)
      * @throws Exception
      */
-    public function __construct($apiToken)
+    public function __construct($apiToken, $verifySSL=false)
     {
         if(!is_string($apiToken) || strlen($apiToken) < 1) {
             throw new Exception('Invalid API token provided');
         }
         $this->_apiToken = $apiToken;
+        $this->_verifySSL = $verifySSL;
         $this->_curl = curl_init();
         //curl_setopt($this->_curl, CURLOPT_HEADER, false);
         //curl_setopt($this->_curl, CURLOPT_TIMEOUT, 30);
